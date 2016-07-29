@@ -27,7 +27,7 @@ chown -R root .
 chmod -R u=rwX,g=rX,o=rX .
 
 # Install the package and its dependencies
-sudo -u root pip install -e .
+pip install -e .
 
 # Clear out potentially stale .pyc files
 # XXX: Is this necessary?

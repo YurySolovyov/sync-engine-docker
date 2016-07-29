@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+"""
+Run the syncback service separately. You should run this if you run the
+API under something like gunicorn. (For convenience, the bin/inbox-api script
+also starts up the syncback service.)
+
+"""
+from gevent import monkey
+monkey.patch_all()
+
+import os
+from setproctitle import setproctitle
+
+import click
+
+import gevent_openssl
+gevent_openssl.monkey_patch()
+
+from nylas.logging import configure_logging
+
+from inbox.config import config as inbox_config
+from inbox.transactions.actions import SyncbackService
+from inbox.util.startup import preflight, load_overrides
+
+
+@click.command()
+@click.option('--prod/--no-prod', default=False,
+              help='Disables the autoreloader and potentially other '
+                   'non-production features.')
+@click.option('-c', '--config', default=None,
+              help='Path to JSON configuration file.')
+@click.option('--process_num', default=0,
+              help="This process's number in the process group: a unique "
+                   "number satisfying 0 <= process_num < total_processes.")
+@click.option('--syncback-id',
+              help="This sync instance's id: a unique number assigned to "
+                   "each syncback instance.")
+def main(prod, config, process_num, syncback_id):
+    """ Launch the actions syncback service. """
+    if syncback_id is None:
+        syncback_id = 0
+
+    setproctitle('syncback-{}'.format(process_num))
+
+    if config is not None:
+        config_path = os.path.abspath(config)
+        load_overrides(config_path)
+    level = os.environ.get('LOGLEVEL', inbox_config.get('LOGLEVEL'))
+    configure_logging(log_level=level)
+    os.environ["SENTRY_DSN"] = inbox_config.get("SENTRY_DSN", "")
+
+    total_processes = int(os.environ.get('SYNCBACK_PROCESSES', 1))
+
+    def start():
+        # Start the syncback service, and just hang out forever
+        syncback = SyncbackService(syncback_id, process_num, total_processes)
+        syncback.start()
+        syncback.join()
+
+    if prod:
+        start()
+    else:
+        preflight()
+        from werkzeug.serving import run_with_reloader
+        run_with_reloader(start)
+
+
+if __name__ == '__main__':
+    main()

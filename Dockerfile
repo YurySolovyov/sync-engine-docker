@@ -5,42 +5,47 @@
 FROM debian:wheezy
 
 MAINTAINER inboxapp
-RUN apt-get -q update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -qy install \
-        anacron \
-        build-essential \
-        cron \
-        curl \
-        g++ \
-        gcc \
-        git \
-        lib32z1-dev \
-        libffi-dev \
-        libmysqlclient-dev \
-        libxml2-dev \
-        libxslt-dev \
-        libzmq-dev \
-        mysql-client \
-        net-tools \
-        procps \
-        python \
-        python-dev \
-        python-lxml \
-        python-pip \
-        python-setuptools \
-        python-software-properties\
-        runit \
-        sudo \
-        supervisor \
-        tnef \
-        wget \
-    && \
-    pip install 'setuptools>=5.3' subprocess32 tox
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get -q update
+RUN apt-get -qy install \
+                anacron \
+                build-essential \
+                cron \
+                curl \
+                g++ \
+                gcc \
+                git \
+                lib32z1-dev \
+                libffi-dev \
+                libmysqlclient-dev \
+                libxml2-dev \
+                libxslt-dev \
+                libzmq-dev \
+                mysql-client \
+                net-tools \
+                procps \
+                python \
+                python-dev \
+                python-lxml \
+                python-pip \
+                python-setuptools \
+                python-software-properties\
+                runit \
+                sudo \
+                supervisor \
+                tnef \
+                wget \
+                libreadline-dev \
+                liblua5.2-dev \
+                pkg-config
+
+RUN pip install 'setuptools>=17.1' subprocess32 tox
 
 RUN useradd -ms /bin/sh admin && \
     install -d -m0775 -o root -g admin /srv/inbox
 WORKDIR /srv/inbox
 
+RUN curl https://bootstrap.pypa.io/ez_setup.py -o - | python
 ADD requirements.txt /srv/inbox/requirements.txt
 RUN pip install -r /srv/inbox/requirements.txt
 
@@ -62,8 +67,8 @@ RUN install -d -m0775 -o root -g admin /etc/inboxapp && \
 
 #@DYNAMIC base
 ADD . /srv/inbox
-RUN /srv/inbox/docker/postinstall-src /srv/inbox && \
-    install -m0755 docker/inbox-cron-hourly /etc/cron.hourly/inbox-cron-hourly && \
+RUN /srv/inbox/docker/postinstall-src /srv/inbox
+RUN install -m0755 docker/inbox-cron-hourly /etc/cron.hourly/inbox-cron-hourly && \
     install -m0755 docker/inbox-cron-daily /etc/cron.daily/inbox-cron-daily && \
     install -m0755 docker/inbox-cron-weekly /etc/cron.weekly/inbox-cron-weekly && \
     install -m0755 docker/inbox-cron-monthly /etc/cron.monthly/inbox-cron-monthly
